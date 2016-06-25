@@ -4,6 +4,7 @@
 # Feel free to customize this to your needs.
 #
 import os.path
+from waflib import Logs
 
 top = '.'
 out = 'build'
@@ -11,6 +12,8 @@ out = 'build'
 
 def options(ctx):
     ctx.load('pebble_sdk')
+    ctx.add_option('--tests', action='store_true',
+                  help="Build the test applications")
 
 
 def configure(ctx):
@@ -21,6 +24,9 @@ def configure(ctx):
     Universal configuration: add your change prior to calling ctx.load('pebble_sdk').
     """
     ctx.load('pebble_sdk')
+    ctx.env.TESTS = ctx.options.tests
+    if ctx.env.TESTS:
+        Logs.pprint("CYAN", "Test build enabled")
 
 
 def build(ctx):
@@ -34,7 +40,11 @@ def build(ctx):
         ctx.env = ctx.all_envs[platform]
         ctx.set_group(ctx.env.PLATFORM_NAME)
         app_elf = '{}/pebble-app.elf'.format(ctx.env.BUILD_DIR)
-        ctx.pbl_program(source=ctx.path.ant_glob('src/**/*.c'), target=app_elf)
+        if ctx.env.TESTS:
+            excl = ['src/main.c']
+        else:
+            excl = ['src/tests/**']
+        ctx.pbl_program(source=ctx.path.ant_glob('src/**/*.c', excl=excl), target=app_elf)
 
         if build_worker:
             worker_elf = '{}/pebble-worker.elf'.format(ctx.env.BUILD_DIR)
